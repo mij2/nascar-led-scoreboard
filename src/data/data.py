@@ -24,9 +24,9 @@ def get_upcoming_races(races, startDate, numDays, useSunday):
 	"""
 	# Check for useSunday, if True, increase days to push the list to the next Sunday after numDays
 	if(useSunday):
-		dayOfWeek = startDate.weekday
+		dayOfWeek = startDate.weekday()
 		if(dayOfWeek != 6):
-			DaysToAdd = 6 - dayOfWeek
+			DaysToAdd = 6 - dayOfWeek * 1
 			numDays += DaysToAdd
 
 	upcomingRaces = []
