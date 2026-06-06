@@ -70,10 +70,9 @@ class MainRenderer:
 		while True:
 			debug.info('PING !!! Render off day')
 			
-			## uncomment after testing
-			#if self.data._is_new_day():
-			#	debug.info('This is a new day')
-			#	return
+			if self.data._is_new_day():
+				debug.info('This is a new day')
+				return
 			self.boards._no_race(self.data, self.matrix,self.sleepEvent)
 
 			if i >= 1:
