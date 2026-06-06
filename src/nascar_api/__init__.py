@@ -1,4 +1,6 @@
 import nascar_api.info
+import nascar_api.race
+import nascar_api.data
 
 def schedule(year, series):
     """
