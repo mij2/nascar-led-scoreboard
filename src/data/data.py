@@ -3,7 +3,7 @@
 		single one.
 """
 
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from time import sleep
 import debug
 from data.status import Status
@@ -62,11 +62,6 @@ class Data:
 		self.today_races = []
 		self.live_races = []
 
-		# Date components — rebuilt into a date object via self.date()
-		self.day = ""
-		self.month = ""
-		self.year = ""
-
 		# Weather board state
 		self.wx_updated = False
 		self.wx_units = []
@@ -113,10 +108,7 @@ class Data:
 		# Initialize the Status object (NASCAR flag-state helpers)
 		self.get_status()
 
-		# Parse today's date
-		self.refresh_current_date()
-
-		# Today's date as a date object
+		# Snapshot of today's date — used by _is_new_day() to detect rollovers
 		self.today = self.date()
 
 		# Fetch the full NASCAR schedule for the current year
@@ -126,7 +118,7 @@ class Data:
 		self.races_upcoming = get_upcoming_races(self.races, datetime.now(), 14)
 
 		# Get today's races
-		self.today_races = self.get_race_today(self.year, self.month, self.day)
+		self.today_races = self.get_race_today(self.today)
 
 		# Check if any of today's races are currently live
 		self.race_is_live = self.is_live_race()
@@ -143,27 +135,9 @@ class Data:
 	# Date helpers
 	# ---------------------------------------------------------------------------
 
-	def __parse_today(self):
-		"""
-		Returns (year, month, day) accounting for a configurable end-of-day boundary.
-		Allows the scoreboard to keep showing the previous day's results past midnight
-		until config.end_of_day has passed.
-		"""
-		today = datetime.today()
-		noon = datetime.strptime("12:00", "%H:%M").replace(year=today.year, month=today.month, day=today.day)
-		end_of_day = datetime.strptime(self.config.end_of_day, "%H:%M").replace(year=today.year, month=today.month, day=today.day)
-		if noon < end_of_day < datetime.now() and datetime.now() > noon:
-			today += timedelta(days=1)
-		elif end_of_day > datetime.now():
-			today -= timedelta(days=1)
-		return today.year, today.month, today.day
-
 	def date(self):
-		"""Rebuild a date object from the stored year/month/day ints."""
-		return datetime(self.year, self.month, self.day).date()
-
-	def refresh_current_date(self):
-		self.year, self.month, self.day = self.__parse_today()
+		"""Return today's actual calendar date."""
+		return datetime.today().date()
 
 	def _is_new_day(self):
 		"""
@@ -171,7 +145,6 @@ class Data:
 		Triggers refresh_daily() and returns True when the date has changed.
 		"""
 		debug.info('Checking for new day')
-		self.refresh_current_date()
 		if self.today != self.date():
 			debug.info('It is a new day, refreshing data')
 			self.today = self.date()
@@ -207,13 +180,13 @@ class Data:
 
 	def refresh_NASCAR_schedule(self):
 		"""
-		Fetches the full race schedule for self.year from the NASCAR API.
-		Returns a dict keyed by series ID. Retries up to 5 times on failure.
+		Fetches the full race schedule for the current year from the NASCAR API.
+		Retries up to 5 times on failure.
 		"""
 		attempts_remaining = 5
 		while attempts_remaining > 0:
 			try:
-				races = nascar_api.info.schedule_info(self.year)
+				races = nascar_api.info.schedule_info(self.date().year)
 				self.network_issues = False
 				return races
 			except ValueError as error_message:
@@ -222,28 +195,33 @@ class Data:
 				debug.error(error_message)
 				attempts_remaining -= 1
 				sleep(NETWORK_RETRY_SLEEP_TIME)
-		return {}
+		return []
 
-	def get_race_today(self, year, month, day):
+	def get_race_today(self, check_date):
 		"""
-		Returns a list of races from self.races_upcoming whose starttime falls
-		on the given calendar date.
+		Returns a list of races from self.races whose starttime falls
+		on check_date (a date object).
 		"""
 		races = []
 		for race in self.races_upcoming:
-			if date(year, month, day) == race["starttime"].date():
+			if check_date == race["starttime"].date():
 				races.append(race)
 		return races
 
 	def is_live_race(self):
 		"""
-		Checks whether any of today's races are currently running under an active flag.
+		Checks whether any of today's (or yesterday's) races are currently running
+		under an active flag. Checking yesterday handles the edge case where a race
+		started before midnight and the board restarts after midnight.
+
 		Flag codes 1-5 = race is live. Updates self.live_races and triggers a
 		running-order refresh for each active race.
 		"""
 		is_live = False
 		self.live_races = []
-		for race in self.today_races:
+		yesterday = (datetime.now() - timedelta(days=1)).date()
+		check_races = self.today_races + self.get_race_today(yesterday)
+		for race in check_races:
 			race_info = nascar_api.race.get_race_info(race["series_id"], race["race_id"])
 			if race_info and 0 < race_info.get("flag_state", 0) < 6:
 				is_live = True
@@ -265,4 +243,4 @@ class Data:
 		debug.info('Refreshing daily data')
 		self.races = self.refresh_NASCAR_schedule()
 		self.races_upcoming = get_upcoming_races(self.races, datetime.now(), 14)
-		self.today_races = self.get_race_today(self.year, self.month, self.day)
+		self.today_races = self.get_race_today(self.today)
