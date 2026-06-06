@@ -31,6 +31,7 @@ def draw_race_schedule(data, race, img_height, width):
 
 	layout = data.config.layout
 	bgClr = data.config.series_colors.color("{}.bg".format(race["series_id"]))
+	txtClr = data.config.series_colors.color("{}.text".format(race["series_id"]))
 		
 	image = Image.new('RGB', (width,img_height))
 	draw = ImageDraw.Draw(image)
@@ -41,7 +42,7 @@ def draw_race_schedule(data, race, img_height, width):
 	top = row_height - 1
 	
 	draw.rectangle((0,0,63,6), fill=(bgClr["r"],bgClr["g"],bgClr["b"]))
-	draw.text((1,0), race["name"], font=layout.font, fill=(0,0,0))
+	draw.text((1,0), race["name"], font=layout.font, fill=(txtClr["r"],txtClr["g"],txtClr["b"]))
 	draw.text((1,7), race["track"], font=layout.font, fill=(255,255,255))
 	draw.text((1,14), race["starttime"].strftime("%b %d, %I:%M %p"), font=layout.font, fill=(255,255,255))
 	draw.text((1,21), race["TV"], font=layout.font, fill=(255,255,255))
