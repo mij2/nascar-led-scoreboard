@@ -26,7 +26,8 @@ def get_upcoming_races(races, startDate, numDays, useSunday):
 	if(useSunday):
 		dayOfWeek = startDate.weekday
 		if(dayOfWeek != 6):
-			numDays += (6 - dayOfWeek)
+			DaysToAdd = 6 - dayOfWeek
+			numDays += DaysToAdd
 
 	upcomingRaces = []
 	for race in races:
