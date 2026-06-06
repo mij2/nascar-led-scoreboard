@@ -132,6 +132,9 @@ class ScoreboardConfig:
         if args.testing_mode:
             self.testing_mode = True
 
+        # NASCAR test flags
+        self.test_live_race = getattr(args, 'test_live_race', False)
+
 
     def read_json(self, filename):
         # Find and return a json file

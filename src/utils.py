@@ -135,6 +135,7 @@ def args():
     parser.add_argument("--testScChampions", action="store", help="A flag to test the stanley cup champions board. Put your team's ID", default=None, type=int)
     parser.add_argument("--test-goal-animation", action="store", help="A flag to test the goal animation", default=None, type=bool)
     parser.add_argument("--testing-mode", action="store", help="Allow to put use a loop in the renderer to do testing. For Development only")
+    parser.add_argument("--test-live-race", action="store_true", help="Inject the most recent past race as a live race to test the results board. For Development only", default=False)
 
     # Options for the rpi-rgb-led-matrix library
     parser.add_argument("--led-rows", action="store", help="Display rows. 16 for 16x32, 32 for 32x32. (Default: 32)",

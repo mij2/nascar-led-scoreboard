@@ -10,7 +10,7 @@ import requests
 #NASCAR URLS
 
 CAR_BASE_URL = "https://cf.nascar.com/"
-CAR_LIVE_URL = CAR_BASE_URL + "live/feeds/{series}/{race}/live_feed.json"
+CAR_LIVE_URL = CAR_BASE_URL + "live/feeds/series_{series}/{race}/live_feed.json"
 CAR_SCHEDULE_URL = CAR_BASE_URL + "cacher/{year}/race_list_basic.json"
 REQUEST_TIMEOUT = 5
 

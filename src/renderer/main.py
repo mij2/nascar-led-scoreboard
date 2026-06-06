@@ -37,6 +37,23 @@ class MainRenderer:
 				sleep(1)
 				debug.info("Testing Mode Refresh")
 
+		if self.data.config.test_live_race:
+			debug.info("Test Live Race Mode — injecting most recent past race")
+			# Find the most recently completed race from the loaded schedule
+			now = datetime.now()
+			past_races = [r for r in self.data.races if r["starttime"] < now]
+			if past_races:
+				test_race = sorted(past_races, key=lambda r: r["starttime"])[-1]
+				debug.info("Using race: {} (series {}, race {})".format(
+					test_race.get("name", "?"), test_race["series_id"], test_race["race_id"]))
+				self.data.race_is_live = True
+				self.data.live_races = [test_race]
+			else:
+				debug.error("No past races found in schedule — cannot inject test race")
+			while True:
+				self.boards.results(self.data, self.matrix, self.sleepEvent)
+				debug.info("Test Live Race Refresh")
+
 		#while self.data.network_issues:
 			#Clock(self.data, self.matrix, self.sleepEvent, duration=60)
 			#self.data.refresh_data()
