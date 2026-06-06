@@ -26,10 +26,13 @@ def get_upcoming_races(races, startDate, numDays, useSunday):
 	if(useSunday):
 		dayOfWeek = startDate.weekday()
 		numDays += 6 - dayOfWeek
+	
+	# set starttime to 23:59
+	startDate
 
 	upcomingRaces = []
 	for race in races:
-		if (race["starttime"] > startDate and race["starttime"] < (startDate + timedelta(days=numDays))):
+		if (race["starttime"] > startDate and race["starttime"] < (startDate.replace(hour=23, minute=59, second=59) + timedelta(days=numDays))):
 			upcomingRaces.append(race)
 	return upcomingRaces
 
