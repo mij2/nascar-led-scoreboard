@@ -1,5 +1,5 @@
-import data
-import object
+import nascar_api.data as data
+import nascar_api.object as object
 import datetime
 
 def sort_schedule(races):
