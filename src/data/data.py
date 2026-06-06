@@ -213,7 +213,7 @@ class Data:
 		attempts_remaining = 5
 		while attempts_remaining > 0:
 			try:
-				races = nascar_api.info.dictSchedule_info(self.year)
+				races = nascar_api.info.schedule_info(self.year)
 				self.network_issues = False
 				return races
 			except ValueError as error_message:
