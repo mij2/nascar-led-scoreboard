@@ -1,324 +1,147 @@
-# NASCAR-TODO: ADAPT — NHL standings board, can later be repurposed for NASCAR points standings
-from PIL import Image, ImageFont, ImageDraw, ImageSequence
-from rgbmatrix import graphics
-from time import sleep
+"""
+NASCAR Points Standings Board
+
+Adapted from the NHL standings board. The scroll/render structure is preserved —
+only the data layer needs to be wired in when the NASCAR standings API is integrated.
+
+HOW THE NHL VERSION WORKED (use as a guide):
+  - data.standings held a standings object populated from the NHL API
+  - Standings were grouped by conference or division, selected via config
+  - draw_standing() iterated a list of team records, drawing one row per team
+    with team colors, abbreviation, W-L-OT record, and points
+
+NASCAR TODO:
+  1. Add a standings URL to nascar_api/data.py:
+       CAR_STANDINGS_URL = CAR_BASE_URL + "cacher/{year}/{series}/standings.json"
+
+  2. Add a get_standings(year, series) function to nascar_api/data.py that calls
+     that URL and returns the parsed JSON.
+
+  3. Add a standings_info(year, series) function to nascar_api/info.py that builds
+     a list of dicts like:
+       {
+           "position": 1,
+           "car_number": "24",
+           "driver_name": "William Byron",
+           "points": 512,
+           "wins": 3,
+           "in_playoffs": True
+       }
+
+  4. In data.py, add self.standings = {} and populate it in refresh_daily() by calling
+     nascar_api.info.standings_info(self.year, series_id) for each preferred series.
+
+  5. Wire up the Standings board in boards.py and add "standings" to the desired
+     states in config.json.
+
+DISPLAY IDEAS:
+  - Header row: series name colored with series_colors bg
+  - Each row: position | car number | driver last name | points
+  - Highlight playoff drivers (inPlayoffs == True) with a different row color
+  - Scroll through full field or top N drivers (configurable)
+"""
+
+from PIL import Image, ImageDraw
 import debug
+
 
 class Standings:
     """
-        TODO: Change draw standings to use new matrix layout system
+    NASCAR points standings board. Scrolls through the championship standings
+    for one or more series.
+
+    Data source (TODO): data.standings — a dict keyed by series_id, each value
+    being a list of driver standing dicts (see nascar_api/info.py TODO above).
     """
-    def __init__(self, data, matrix,sleepEvent):
-        self.conferences = ["eastern", "western"]
-        self.divisions = ["metropolitan", "atlantic", "central", "pacific"]
+
+    def __init__(self, data, matrix, sleepEvent):
         self.data = data
         self.matrix = matrix
-        self.team_colors = data.config.team_colors
-        self.sleepEvent= sleepEvent
+        self.sleepEvent = sleepEvent
         self.sleepEvent.clear()
 
     def render(self):
-        if self.data.standings:
-            type = self.data.config.standing_type
-            if self.data.config.preferred_standings_only:
-                if type == 'conference':
-                    conference = self.data.config.preferred_conference
-                    records = getattr(self.data.standings.by_conference, conference)
-                    # calculate the image height
-                    im_height = (len(records) + 1) * 7
-                    # Increment to move image up
-                    i = 0
-                    image = draw_standing(self.data, conference, records, im_height, self.matrix.width)
-                    self.matrix.draw_image((0, i), image)
-                    self.matrix.render()
-                    #sleep(5)
-                    self.sleepEvent.wait(5)
-                    # Move the image up until we hit the bottom.
-                    while i > -(im_height - self.matrix.height) and not self.sleepEvent.is_set():
-                        i -= 1
-                        self.matrix.draw_image((0, i), image)
-                        self.matrix.render()
-                        #sleep(0.2)
-                        self.sleepEvent.wait(0.2)
-                    # Show the bottom before we change to the next table.
-                    #sleep(5)
-                    self.sleepEvent.wait(5)
+        # TODO: replace this guard with a check against data.standings once it exists
+        if not hasattr(self.data, 'standings') or not self.data.standings:
+            debug.error("Standings board: no standings data available")
+            self.sleepEvent.wait(5)
+            return
 
-                elif type == 'division':
-                    division = self.data.config.preferred_divisions
-                    records = getattr(self.data.standings.by_division, division)
-                    # calculate the image height
-                    im_height = (len(records) + 1) * 7
-                    # Increment to move image up
-                    i = 0
-                    image = draw_standing(self.data, division, records, im_height, self.matrix.width)
-                    self.matrix.draw_image((0, i), image)
-                    self.matrix.render()
-                    #sleep(5)
-                    self.sleepEvent.wait(5)
+        # TODO: iterate over data.config.preferred_series (or all series in data.standings)
+        # For each series, call draw_standings() and scroll the result, similar to how
+        # the NHL version iterated over conferences/divisions.
+        #
+        # Example structure to implement:
+        #
+        # for series_id, records in self.data.standings.items():
+        #     im_height = (len(records) + 1) * 7
+        #     image = draw_standings(self.data, series_id, records, im_height, self.matrix.width)
+        #     i = 0
+        #     self.matrix.draw_image((0, i), image)
+        #     self.matrix.render()
+        #     self.sleepEvent.wait(5)
+        #     while i > -(im_height - self.matrix.height) and not self.sleepEvent.is_set():
+        #         i -= 1
+        #         self.matrix.draw_image((0, i), image)
+        #         self.matrix.render()
+        #         self.sleepEvent.wait(0.2)
+        #     self.sleepEvent.wait(5)
 
-                    # Move the image up until we hit the bottom.
-                    while i > -(im_height - self.matrix.height) and not self.sleepEvent.is_set():
-                        i -= 1
-                        self.matrix.draw_image((0, i), image)
-                        self.matrix.render()
-                        #sleep(0.2)
-                        self.sleepEvent.wait(0.2)
-                    # Show the bottom before we change to the next table.
-                    #sleep(5)
-                    self.sleepEvent.wait(5)
-
-                elif type == 'wild_card':
-                    wildcard_records = {}
-                    conf_name = self.data.config.preferred_conference
-                    conf_data = getattr(self.data.standings.by_wildcard, conf_name)
-                    wildcard_records["conference"] = conf_name
-                    division_leaders = {}
-                    for record_type, value in vars(conf_data).items():
-                        if record_type == "wild_card":
-                            wildcard_records["wild_card"] = value
-                        else:
-                            for div_name, div_record in vars(value).items():
-                                division_leaders[div_name] = div_record
-
-                            wildcard_records["division_leaders"] = division_leaders
-
-                    # initialize the number_of_rows at 10 (conference name + 2x Division name + wildcard title + 6x Division leaders record)
-                    number_of_rows = 10 + len(wildcard_records["wild_card"])
-
-                    # Space between each table in row of LED
-                    table_offset = 3
-
-                    # Total Height in row of LED. each record and table titles need 7 row of LED plus the space between each tables (3 tables means 2 space between each)
-                    img_height = (number_of_rows * 7) + (table_offset * 2)
-
-                    # Increment to move image up
-                    i = 0
-                    image = draw_wild_card(self.data, wildcard_records, self.matrix.width, img_height, table_offset)
-                    self.matrix.draw_image((0, i), image)
-                    self.matrix.render()
-                    #sleep(5)
-                    self.sleepEvent.wait(5)
-                    # Move the image up until we hit the bottom.
-                    while i > -(img_height - self.matrix.height) and not self.sleepEvent.is_set():
-                        i -= 1
-                        self.matrix.draw_image((0, i), image)
-                        self.matrix.render()
-                        #sleep(0.2)
-                        self.sleepEvent.wait(0.2)
-                    #sleep(5)
-                    self.sleepEvent.wait(5)
-            else:
-                if type == 'conference':
-                    for conference in self.conferences:
-                        records = getattr(self.data.standings.by_conference, conference)
-                        # calculate the image height
-                        im_height = (len(records) + 1) * 7
-                        # Increment to move image up
-                        i = 0
-                        image = draw_standing(self.data, conference, records, im_height, self.matrix.width)
-                        self.matrix.draw_image((0, i), image)
-                        self.matrix.render()
-                        if self.data.network_issues:
-                            self.matrix.network_issue_indicator()
-                        
-                        if self.data.newUpdate and not self.data.config.clock_hide_indicators:
-                            self.matrix.update_indicator()
-
-                        #sleep(5)
-                        self.sleepEvent.wait(5)
-
-                        # Move the image up until we hit the bottom.
-                        while i > -(im_height - self.matrix.height) and not self.sleepEvent.is_set():
-                            i -= 1
-                            self.matrix.draw_image((0, i), image)
-                            self.matrix.render()
-                            if self.data.network_issues:
-                                self.matrix.network_issue_indicator()
-
-                            if self.data.newUpdate and not self.data.config.clock_hide_indicators:
-                                self.matrix.update_indicator()
-                                
-                            #sleep(0.2)
-                            self.sleepEvent.wait(0.2)
-                        # Show the bottom before we change to the next table.
-                        #sleep(5)
-                        self.sleepEvent.wait(5)
-
-                elif type == 'division':
-                    for division in self.divisions:
-                        records = getattr(self.data.standings.by_division, division)
-                        # calculate the image height
-                        im_height = (len(records) + 1) * 7
-                        # Increment to move image up
-                        i = 0
-                        image = draw_standing(self.data, division, records, im_height, self.matrix.width)
-                        self.matrix.draw_image((0, i), image)
-                        self.matrix.render()
-                        #sleep(5)
-                        self.sleepEvent.wait(5)
-
-                        # Move the image up until we hit the bottom.
-                        while i > -(im_height - self.matrix.height) and not self.sleepEvent.is_set():
-                            i -= 1
-                            self.matrix.draw_image((0, i), image)
-                            self.matrix.render()
-                            #sleep(0.2)
-                            self.sleepEvent.wait(0.2)
-                        # Show the bottom before we change to the next table.
-                        #sleep(5)
-                        self.sleepEvent.wait(5)
-                elif type == 'wild_card':
-                    wildcard_records = {}
-                    for conf_name, conf_data in vars(self.data.standings.by_wildcard).items():
-                        wildcard_records["conference"] = conf_name
-                        division_leaders = {}
-                        for record_type, value in vars(conf_data).items():
-                            if record_type == "wild_card":
-                                wildcard_records["wild_card"] = value
-                            else:
-                                for div_name, div_record in vars(value).items():
-                                    division_leaders[div_name] = div_record
-                                wildcard_records["division_leaders"] = division_leaders
-                        # initialize the number_of_rows at 10 (conference name + 2x Division name + wildcard title + 6x Division leaders record)
-                        number_of_rows = 10 + len(wildcard_records["wild_card"])
-                        # Space between each table in row of LED
-                        table_offset = 3
-                        # Total Height in row of LED. each record and table titles need 7 row of LED plus the space between each tables (3 tables means 2 space between each)
-                        img_height = (number_of_rows * 7) + (table_offset * 2)
-                        # Increment to move image up
-                        i = 0
-                        image = draw_wild_card(self.data, wildcard_records, self.matrix.width, img_height, table_offset)
-                        self.matrix.draw_image((0, i), image)
-                        self.matrix.render()
-                        #sleep(5)
-                        self.sleepEvent.wait(5)
-                        # Move the image up until we hit the bottom.
-                        while i > -(img_height - self.matrix.height) and not self.sleepEvent.is_set():
-                            i -= 1
-                            self.matrix.draw_image((0, i), image)
-                            self.matrix.render()
-                            #sleep(0.2)
-                            self.sleepEvent.wait(0.2)
-                        #sleep(5)
-                        self.sleepEvent.wait(5)
-        else:
-            debug.error("Standing board unavailable due to missing information from the API")
+        debug.info("Standings board: not yet implemented")
+        self.sleepEvent.wait(5)
 
 
-def draw_standing(data, name, records, img_height, width):
+def draw_standings(data, series_id, records, img_height, width):
     """
-        Draw an image of a list of standing record of each team.
-        :return the image
-    """
+    Draw a scrollable standings image for one series.
 
+    series_id: int or str (1=Cup, 2=Xfinity, 3=Truck)
+    records:   list of driver standing dicts (see TODO in module docstring)
+
+    HOW THE NHL VERSION WORKED (draw_standing):
+      - Drew a header row with the conference/division name
+      - For each team: colored bg rectangle using team_colors, abbreviation,
+        W-L-OT record, and points right-aligned
+      - Row height was 7px throughout
+
+    NASCAR ADAPTATION NOTES:
+      - Use series_colors for the header bg instead of team_colors
+      - Each row: position number, car number, driver last name, points
+      - Consider a small colored dot or different row bg for playoff drivers
+      - Points can be right-aligned like NHL did with the points column
+      - Car number column width ~10px, name ~30px, points right-aligned
+    """
     layout = data.config.layout
-
-    # Create a new data image.
     image = Image.new('RGB', (width, img_height))
     draw = ImageDraw.Draw(image)
 
-    """
-        Each record info is shown in a row of 7 pixel high. The initial row start at pixel 0 (top screen). For each
-        team's record we add an other row and increment the row position by the height of a row plus the
-        incrementation "i".
-    """
-    row_pos = 0
     row_height = 7
-    top = row_height - 1  # For some reason, when drawing with PIL, the first row is not 0 but -1
-
-    draw.text((1, 0), name, font=layout.font)
-    row_pos += row_height
-
-    for team in records:
-        abbrev = team["teamAbbrev"]["default"]
-        team_id = data.teams_info_by_abbrev[abbrev].details.id
-        points = str(team["points"])
-        wins = team["wins"]
-        losses = team["losses"]
-        ot = team["otLosses"]
-        team_colors = data.config.team_colors
-        bg_color = team_colors.color("{}.primary".format(team_id))
-        txt_color = team_colors.color("{}.text".format(team_id))
-        draw.rectangle([0, row_pos, 12,top + row_pos], fill=(bg_color['r'], bg_color['g'], bg_color['b']))
-        draw.text((1, row_pos), abbrev, fill=(txt_color['r'], txt_color['g'], txt_color['b']), font=layout.font)
-        if len(points) == 3:
-            draw.text((54, row_pos), points, font=layout.font)
-        else:
-            draw.text((57, row_pos), points, font=layout.font)
-        draw.text((19, row_pos), "{}-{}-{}".format(wins, losses, ot), font=layout.font)
-        row_pos += row_height
-
-    return image
-
-
-def draw_wild_card(data, wildcard_records, width, img_height, offset):
-    """
-        Draw an image of a list of standing record of each team.
-        This is the Wild card version which is a bit more elaborate. need to figure a way to merge both draw_standings
-        and draw_wild_card together.
-        :return image
-    """
-    teams_info = data.teams_info
-    layout = data.config.layout
-    # Create a new data image.
-    image = Image.new('RGB', (width, img_height))
-    draw = ImageDraw.Draw(image)
-
-    """
-        Each record info is shown in a row of 7 pixel high. The initial row start at pixel 0 (top screen). For each
-        team's record we add an other row and increment the row position by the height of a row plus the
-        incrementation "i".
-    """
     row_pos = 0
-    row_height = 7
-    top = row_height - 1  # For some reason, when drawing with PIL, the first row is not 0 but -1
 
-    draw.text((1, 0), wildcard_records["conference"], font=layout.font)
+    # TODO: draw header using series_colors
+    # series_bg = data.config.series_colors.color("{}.bg".format(series_id))
+    # series_txt = data.config.series_colors.color("{}.text".format(series_id))
+    # series_names = {1: "CUP", 2: "NXS", 3: "TRUCKS"}
+    # draw.rectangle([0, 0, width - 1, row_height - 1],
+    #                fill=(series_bg["r"], series_bg["g"], series_bg["b"]))
+    # draw.text((1, 0), series_names.get(int(series_id), "NASCAR"),
+    #           fill=(series_txt["r"], series_txt["g"], series_txt["b"]), font=layout.font)
     row_pos += row_height
-    for division, division_data in wildcard_records["division_leaders"].items():
-        draw.text((1, row_pos), division, font=layout.font)
-        row_pos += row_height
-        for team in division_data["teamRecords"]:
-            abbrev = team.team_abbrev.default
-            team_id = data.teams_info_by_abbrev[abbrev].details.id
-            points = str(team.points)
-            wins = team.wins
-            losses = team.losses
-            ot = team.ot_losses
-            team_colors = data.config.team_colors
-            bg_color = team_colors.color("{}.primary".format(team_id))
-            txt_color = team_colors.color("{}.text".format(team_id))
-            draw.rectangle([0, row_pos, 12, top + row_pos], fill=(bg_color['r'], bg_color['g'], bg_color['b']))
-            draw.text((1, row_pos), abbrev, fill=(txt_color['r'], txt_color['g'], txt_color['b']), font=layout.font)
-            if len(points) == 3:
-                draw.text((54, row_pos), points, font=layout.font)
-            else:
-                draw.text((57, row_pos), points, font=layout.font)
-            draw.text((19, row_pos), "{}-{}-{}".format(wins, losses, ot), font=layout.font)
-            row_pos += row_height
-        # add a space of one row of 2 LED between each tables
-        row_pos += offset
 
-    draw.text((1, row_pos), "wild card", font=layout.font)
-    row_pos += row_height
-    for team in wildcard_records["wild_card"]:
-        abbrev = team.team_abbrev.default
-        team_id = data.teams_info_by_abbrev[abbrev].details.id
-        points = str(team.points)
-        wins = team.wins
-        losses = team.losses
-        ot = team.ot_losses
-        team_colors = data.config.team_colors
-        bg_color = team_colors.color("{}.primary".format(team_id))
-        txt_color = team_colors.color("{}.text".format(team_id))
-        draw.rectangle([0, top + row_pos, 12, row_pos], fill=(bg_color['r'], bg_color['g'], bg_color['b']))
-        draw.text((1, row_pos), abbrev, fill=(txt_color['r'], txt_color['g'], txt_color['b']), font=layout.font)
-        if len(points) == 3:
-            draw.text((54, row_pos), points, font=layout.font)
-        else:
-            draw.text((57, row_pos), points, font=layout.font)
-        draw.text((19, row_pos), "{}-{}-{}".format(wins, losses, ot), font=layout.font)
-        row_pos += row_height
+    # TODO: draw each driver row
+    # for driver in records:
+    #     pos     = str(driver["position"])
+    #     car_no  = str(driver["car_number"])
+    #     name    = driver["driver_name"].split()[-1]  # last name only
+    #     points  = str(driver["points"])
+    #     in_playoffs = driver.get("in_playoffs", False)
+    #
+    #     row_bg = (0, 60, 0) if in_playoffs else ((0, 0, 0) if row_pos % 14 == 7 else (20, 20, 20))
+    #     draw.rectangle([0, row_pos, width - 1, row_pos + row_height - 1], fill=row_bg)
+    #     draw.text((1,  row_pos), pos,    fill=(255, 255, 255), font=layout.font)
+    #     draw.text((9,  row_pos), car_no, fill=(255, 255, 0),   font=layout.font)
+    #     draw.text((18, row_pos), name,   fill=(255, 255, 255), font=layout.font)
+    #     draw.text((54, row_pos), points, fill=(255, 255, 255), font=layout.font)
+    #     row_pos += row_height
 
     return image

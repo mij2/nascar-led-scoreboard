@@ -10,6 +10,8 @@ from boards.wxWeather import wxWeather
 from boards.wxAlert import wxAlert
 from boards.christmas import Christmas
 from boards.seasoncountdown import SeasonCountdown
+from boards.standings import Standings
+from boards.driver_summary import DriverSummary
 from boards.wxForecast import wxForecast
 from boards.screensaver import screenSaver
 from boards.schedule import Schedule
@@ -126,88 +128,74 @@ class Boards:
                 if not data.pb_trigger or not data.wx_alert_interrupt or not data.screensaver:
                     bord_index += 1
 
-    def _intermission(self, data, matrix, sleepEvent):
+    def _pre_race(self, data, matrix, sleepEvent):
         bord_index = 0
         while True:
-            board = getattr(self, data.config.boards_intermission[bord_index])
-            data.curr_board = data.config.boards_intermission[bord_index]
+            board = getattr(self, data.config.boards_pre_race[bord_index])
+            data.curr_board = data.config.boards_pre_race[bord_index]
 
             if data.pb_trigger:
-                debug.info('PushButton triggered....will display ' + data.config.pushbutton_state_triggered1 + ' board ' + "Overriding intermission -> " + data.config.boards_intermission[bord_index])
+                debug.info('PushButton triggered....will display ' + data.config.pushbutton_state_triggered1 + ' board ' + "Overriding pre_race -> " + data.config.boards_pre_race[bord_index])
                 if not data.screensaver:
                     data.pb_trigger = False
-                board = getattr(self,data.config.pushbutton_state_triggered1)
+                board = getattr(self, data.config.pushbutton_state_triggered1)
                 data.curr_board = data.config.pushbutton_state_triggered1
                 bord_index -= 1
 
             # Display the Weather Alert board
             if data.wx_alert_interrupt:
-                debug.info('Weather Alert triggered in intermission....will display weather alert board')
+                debug.info('Weather Alert triggered in pre_race loop....will display weather alert board')
                 data.wx_alert_interrupt = False
-                #Display the board from the config
-                board = getattr(self,"wxalert")
+                board = getattr(self, "wxalert")
                 data.curr_board = "wxalert"
                 bord_index -= 1
 
-            ## Don't Display the Screensaver Board in "live game mode"
-            # if data.screensaver:
-            #     if not data.pb_trigger:
-            #         debug.info('Screensaver triggered in intermission loop....')
-            #         #Display the board from the config
-            #         board = getattr(self,"screensaver")
-            #         data.curr_board = "screensaver"
-            #         data.prev_board = data.config.boards_off_day[bord_index]
-            #         bord_index -= 1
-            #     else:
-            #         data.pb_trigger = False
-        
+            # Screensaver is suppressed during pre-race (race is imminent)
+
             board(data, matrix, sleepEvent)
 
-            if bord_index >= (len(data.config.boards_intermission) - 1):
+            if bord_index >= (len(data.config.boards_pre_race) - 1):
                 return
             else:
                 if not data.pb_trigger or not data.wx_alert_interrupt or not data.screensaver:
                     bord_index += 1
 
-    def _post_game(self, data, matrix, sleepEvent):
+    def _post_race(self, data, matrix, sleepEvent):
         bord_index = 0
         while True:
-            board = getattr(self, data.config.boards_post_game[bord_index])
-            data.curr_board = data.config.boards_post_game[bord_index]
+            board = getattr(self, data.config.boards_post_race[bord_index])
+            data.curr_board = data.config.boards_post_race[bord_index]
 
             if data.pb_trigger:
-                debug.info('PushButton triggered....will display ' + data.config.pushbutton_state_triggered1 + ' board ' + "Overriding post_game -> " + data.config.boards_post_game[bord_index])
+                debug.info('PushButton triggered....will display ' + data.config.pushbutton_state_triggered1 + ' board ' + "Overriding post_race -> " + data.config.boards_post_race[bord_index])
                 if not data.screensaver:
                     data.pb_trigger = False
-                board = getattr(self,data.config.pushbutton_state_triggered1)
+                board = getattr(self, data.config.pushbutton_state_triggered1)
                 data.curr_board = data.config.pushbutton_state_triggered1
                 bord_index -= 1
 
             # Display the Weather Alert board
             if data.wx_alert_interrupt:
-                debug.info('Weather Alert triggered in post game loop....will display weather alert board')
+                debug.info('Weather Alert triggered in post_race loop....will display weather alert board')
                 data.wx_alert_interrupt = False
-                #Display the board from the config
-                board = getattr(self,"wxalert")
+                board = getattr(self, "wxalert")
                 data.curr_board = "wxalert"
                 bord_index -= 1
 
             # Display the Screensaver Board
             if data.screensaver:
                 if not data.pb_trigger:
-                    debug.info('Screensaver triggered in post game loop....')
-                    #Display the board from the config
-                    board = getattr(self,"screensaver")
+                    debug.info('Screensaver triggered in post_race loop....')
+                    board = getattr(self, "screensaver")
                     data.curr_board = "screensaver"
-                    data.prev_board = data.config.boards_off_day[bord_index]
+                    data.prev_board = data.config.boards_post_race[bord_index]
                     bord_index -= 1
                 else:
                     data.pb_trigger = False
 
-
             board(data, matrix, sleepEvent)
 
-            if bord_index >= (len(data.config.boards_post_game) - 1):
+            if bord_index >= (len(data.config.boards_post_race) - 1):
                 return
             else:
                 if not data.pb_trigger or not data.wx_alert_interrupt or not data.screensaver:
@@ -227,6 +215,14 @@ class Boards:
     def results(self, data, matrix, sleepEvent):
         """Live running order / race results board."""
         Results(data, matrix, sleepEvent).render()
+
+    def standings(self, data, matrix, sleepEvent):
+        """NASCAR points standings board (TODO: wire up data layer)."""
+        Standings(data, matrix, sleepEvent).render()
+
+    def driver_summary(self, data, matrix, sleepEvent):
+        """NASCAR driver summary board (TODO: wire up data layer)."""
+        DriverSummary(data, matrix, sleepEvent).render()
 
     # -------------------------------------------------------------------------
     # Utility boards
