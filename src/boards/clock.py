@@ -20,24 +20,20 @@ class Clock:
         #Is the weather clock json loaded
         self.wx_clock = False
 
-        #Get team colors to use for the clock
-        self.team_colors = data.config.team_colors
-        self.preferred_teams = data.pref_teams
-
-
-        #Select the first preferred team for clock setting
-        self.clock_color = self.team_colors.color("{}.primary".format(self.preferred_teams[0]))
-        self.wxdt_color = self.team_colors.color("{}.text".format(self.preferred_teams[0]))
-
-        #If text of team is black, force to white
-        if self.wxdt_color == {'r': 0, 'b': 0, 'g': 0}:
-            self.wxdt_color = {'r': 255, 'b': 255, 'g': 255}
-
         r = r"(\d+),\s*(\d+),\s*(\d+)"
 
+        # Use series colors for clock tinting if enabled, otherwise fall through to rgb/default
         if self.data.config.clock_team_colors:
-            self.clockfill = (self.clock_color['r'],self.clock_color['g'],self.clock_color['b'])
-            self.wxdtfill = (self.wxdt_color['r'],self.wxdt_color['g'],self.wxdt_color['b'])
+            series_colors = data.config.series_colors
+            preferred = data.config.preferred_series
+            if preferred:
+                clock_color = series_colors.color("{}.bg".format(preferred[0]))
+                wxdt_color  = series_colors.color("{}.text".format(preferred[0]))
+                self.clockfill = (clock_color['r'], clock_color['g'], clock_color['b'])
+                self.wxdtfill  = (wxdt_color['r'],  wxdt_color['g'],  wxdt_color['b'])
+            else:
+                self.clockfill = None
+                self.wxdtfill  = None
         elif len(self.data.config.clock_clock_rgb) > 0 or len(self.data.config.clock_date_rgb) > 0:
             if len(self.data.config.clock_clock_rgb) > 0:
                 #Test string to make sure it's in rgb format
