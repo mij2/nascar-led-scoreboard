@@ -14,7 +14,7 @@ import nascar_api
 NETWORK_RETRY_SLEEP_TIME = 0.5
 
 
-def get_upcoming_races(races, startDate, numDays):
+def get_upcoming_races(races, startDate, numDays, useSunday):
 	"""
 	Standalone helper that filters a list of race dicts to only those
 	falling within [startDate, startDate + numDays). Used to populate the
@@ -22,6 +22,12 @@ def get_upcoming_races(races, startDate, numDays):
 
 	Each race dict is expected to have a "starttime" key of type datetime.
 	"""
+	# Check for useSunday, if True, increase days to push the list to the next Sunday after numDays
+	if(useSunday):
+		dayOfWeek = startDate.weekday
+		if(dayOfWeek != 6):
+			numDays += (6 - dayOfWeek)
+
 	upcomingRaces = []
 	for race in races:
 		if (race["starttime"] > startDate and race["starttime"] < (startDate + timedelta(days=numDays))):
@@ -115,7 +121,7 @@ class Data:
 		self.races = self.refresh_NASCAR_schedule()
 
 		# Build upcoming races window (next 14 days) for the schedule board
-		self.races_upcoming = get_upcoming_races(self.races, datetime.now(), 14)
+		self.races_upcoming = get_upcoming_races(self.races, datetime.now(), 14, True)
 
 		# Get today's races
 		self.today_races = self.get_race_today(self.today)
