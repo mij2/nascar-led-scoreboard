@@ -1,7 +1,7 @@
 from utils import get_file
 from data.layout import Layout
 from data.colors import Color
-from config.main import Config  
+from config.main import Config
 # TODO: Re-enable once NASCAR config.json and config.schema.json are finalized
 # from nhl_setup.validate_json import validateConf
 import json
@@ -89,7 +89,7 @@ class ScoreboardConfig:
         self.wxalert_alert_feed = json["boards"]["wxalert"]["alert_feed"]
         #Allow the weather thread to interrupt the current flow of the display loop and show an alert if it shows up
         #Similar to how a pushbutton interrupts the flow
-        self.wxalert_show_alerts = json["boards"]["wxalert"]["show_alerts"]  
+        self.wxalert_show_alerts = json["boards"]["wxalert"]["show_alerts"]
         #Show expire time instead of effective time of NWS alerts
         self.wxalert_nws_show_expire = json["boards"]["wxalert"]["nws_show_expire"]
         # Display on top and bottom bar the severity (for US) and type
@@ -101,8 +101,6 @@ class ScoreboardConfig:
         # Show any alerts on clock
         self.wxalert_show_on_clock = json["boards"]["wxalert"]["show_on_clock"]
         self.wxalert_update_freq = json["boards"]["wxalert"]["update_freq"]
-
-
 
         # States — board lists for each race day phase
         self.boards_off_day = json["states"]["off_day"]
@@ -116,10 +114,10 @@ class ScoreboardConfig:
         # Clock
         self.clock_board_duration = json["boards"]["clock"]["duration"]
         self.clock_hide_indicators = json["boards"]["clock"]["hide_indicator"]
-        self.clock_team_colors =  json["boards"]["clock"]["preferred_team_colors"]
-        self.clock_clock_rgb =  json["boards"]["clock"]["clock_rgb"]
-        self.clock_date_rgb =  json["boards"]["clock"]["date_rgb"]
-        self.clock_flash_seconds =  json["boards"]["clock"]["flash_seconds"]
+        self.clock_team_colors = json["boards"]["clock"]["preferred_team_colors"]
+        self.clock_clock_rgb = json["boards"]["clock"]["clock_rgb"]
+        self.clock_date_rgb = json["boards"]["clock"]["date_rgb"]
+        self.clock_flash_seconds = json["boards"]["clock"]["flash_seconds"]
 
         # Fonts
         self.layout = Layout()
@@ -133,7 +131,7 @@ class ScoreboardConfig:
 
         if args.testing_mode:
             self.testing_mode = True
-            
+
 
     def read_json(self, filename):
         # Find and return a json file
@@ -163,7 +161,6 @@ class ScoreboardConfig:
                 debug.error("Invalid {} config file. Make sure {} exists in config/".format(base_filename, base_filename))
             sys.exit(1)
 
-
         # TODO: Re-enable config validation once NASCAR config.json and config.schema.json are finalized.
         # Update the schema path and messaging below before uncommenting.
         # if base_filename == "config":
@@ -191,4 +188,3 @@ class ScoreboardConfig:
             time_format = "%H:%M"
 
         return time_format
-
