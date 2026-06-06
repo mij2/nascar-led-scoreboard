@@ -55,15 +55,14 @@ class MainRenderer:
 
 		while True:
 			debug.info('Rendering...')
+			self.data.race_is_live = self.data.is_live_race()
 
-			# NASCAR-TODO: replace this with proper state detection once the renderer
-			# routing is fully wired up. Logic should check:
-			#   - data.race_is_live        → _live_race() (needs to be added to boards.py)
-			#   - data.today_races (future start time) → _pre_race()
-			#   - data.today_races (past, race over)   → _post_race()
-			#   - no races today           → _no_race()
-			debug.info("No race today")
-			self.__render_no_race()
+			if self.data.race_is_live:
+				debug.info("Live race detected — rendering results board")
+				self.__render_live_race()
+			else:
+				debug.info("No live race")
+				self.__render_no_race()
 
 	def __render_no_race(self):
 		i = 0
@@ -81,6 +80,10 @@ class MainRenderer:
 				i = 0
 			else:
 				i += 1
-
-	# NASCAR-TODO: add renderer helper methods here as new boards are built
-	# e.g. __render_live_race(), __render_pre_race(), __render_post_race()
+	
+	def __render_live_race(self):
+		while self.data.race_is_live:
+			self.boards.results(self.data, self.matrix, self.sleepEvent)
+			if self.data._is_new_day():
+				return
+			self.data.race_is_live = self.data.is_live_race()

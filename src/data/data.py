@@ -211,7 +211,7 @@ class Data:
 		on check_date (a date object).
 		"""
 		races = []
-		for race in self.races_upcoming:
+		for race in self.races:
 			if check_date == race["starttime"].date():
 				races.append(race)
 		return races
